@@ -1,0 +1,50 @@
+  services:
+    kafka:
+      image: bitnami/kafka:4.0.0
+      container_name: kafka
+      ports:
+        - "9092:9092"
+      environment:
+        # Configuración KRaft
+        - KAFKA_CFG_NODE_ID=1
+        - KAFKA_CFG_PROCESS_ROLES=controller,broker
+        - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+        - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+        
+        # Configuración de listeners - ESTA ES LA CLAVE
+        - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+        - KAFKA_CFG_LISTENERS=INTERNAL://:29092,EXTERNAL://:9092,CONTROLLER://:9093
+        - KAFKA_CFG_ADVERTISED_LISTENERS=INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+        - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=INTERNAL
+        
+        # Configuración adicional
+        - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+        - ALLOW_PLAINTEXT_LISTENER=yes
+        
+        # Cluster ID para KRaft
+        - KAFKA_KRAFT_CLUSTER_ID=abcdefghijklmnopqrstuv
+        
+        # Configuraciones adicionales para estabilidad
+        - KAFKA_CFG_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+        - KAFKA_CFG_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+        - KAFKA_CFG_TRANSACTION_STATE_LOG_MIN_ISR=1
+      volumes:
+        - kafka_data:/bitnami/kafka
+
+    # Kafdrop conectándose al puerto interno
+    kafdrop:
+      image: obsidiandynamics/kafdrop:3.31.0
+      container_name: kafdrop
+      ports:
+        - "9000:9000"
+      environment:
+        - KAFKA_BROKERCONNECT=kafka:29092
+        - JVM_OPTS=-Xms16M -Xmx48M
+        - SERVER_SERVLET_CONTEXTPATH=/
+      depends_on:
+        - kafka
+      restart: unless-stopped
+
+  volumes:
+    kafka_data:
+      driver: local
